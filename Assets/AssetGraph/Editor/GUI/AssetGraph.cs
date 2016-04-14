@@ -15,13 +15,12 @@ namespace AssetGraph {
 		/*
 			menu items
 		*/
-		[MenuItem(AssetGraphSettings.GUI_TEXT_MENU_OPEN, false, 1)]
-		public static void Open () {
+		[MenuItem(AssetGraphSettings.GUI_TEXT_MENU_OPEN, false, 1)] public static void Open () {
 			GetWindow<AssetGraph>();
 		}
 
-		[MenuItem(AssetGraphSettings.GUI_TEXT_MENU_BUILD, false, 1 + 11)]
-		public static void BuildFromMenu () {
+		
+		[MenuItem(AssetGraphSettings.GUI_TEXT_MENU_BUILD, false, 1 + 11)] public static void BuildFromMenu () {
 			var lastPackageStr = LastPackage();
 			Run(lastPackageStr);
 		}
@@ -31,17 +30,16 @@ namespace AssetGraph {
 			SCRIPT_BUNDLIZER,
 			SCRIPT_FINALLY
 		}
-
-		[MenuItem(AssetGraphSettings.GUI_TEXT_MENU_GENERATE_PREFABRICATOR)]
-		public static void GeneratePrefabricator () {
+		
+		[MenuItem(AssetGraphSettings.GUI_TEXT_MENU_GENERATE_PREFABRICATOR)] public static void GeneratePrefabricator () {
 			GenerateScript(ScriptType.SCRIPT_PREFABRICATOR);
 		}
-		[MenuItem(AssetGraphSettings.GUI_TEXT_MENU_GENERATE_BUNDLIZER)]
-		public static void GenerateBundlizer () {
+		
+		[MenuItem(AssetGraphSettings.GUI_TEXT_MENU_GENERATE_BUNDLIZER)] public static void GenerateBundlizer () {
 			GenerateScript(ScriptType.SCRIPT_BUNDLIZER);
 		}
-		[MenuItem(AssetGraphSettings.GUI_TEXT_MENU_GENERATE_FINALLY)]
-		public static void GenerateFinally () {
+		
+		[MenuItem(AssetGraphSettings.GUI_TEXT_MENU_GENERATE_FINALLY)] public static void GenerateFinally () {
 			GenerateScript(ScriptType.SCRIPT_FINALLY);
 		}
 
@@ -1607,12 +1605,14 @@ namespace AssetGraph {
 					newNode.AddConnectionPoint(new OutputPoint(outputPointLabel));
 				}
 			}
+			
 			// if (scriptBaseType == typeof(ImporterBase)) {
 			// 	var kind = AssetGraphSettings.NodeKind.IMPORTER_SCRIPT;
 			// 	newNode = Node.ScriptNode(nodes.Count, scriptName, nodeId, kind, scriptType, scriptPath, x, y);
 			// 	newNode.AddConnectionPoint(new InputPoint(AssetGraphSettings.DEFAULT_INPUTPOINT_LABEL));
 			// 	newNode.AddConnectionPoint(new OutputPoint(AssetGraphSettings.DEFAULT_OUTPUTPOINT_LABEL));
 			// }
+			
 			if (scriptBaseType == typeof(PrefabricatorBase)) {
 				var kind = AssetGraphSettings.NodeKind.PREFABRICATOR_SCRIPT;
 				newNode = Node.ScriptNode(nodes.Count, scriptName, nodeId, kind, scriptType, scriptPath, x, y);
@@ -1699,7 +1699,6 @@ namespace AssetGraph {
 					newNode = Node.GUINodeForBundlizer(nodes.Count, nodeName, nodeId, kind, newBundlizerKeyword, newBundleUseOutput, x, y);
 					newNode.AddConnectionPoint(new InputPoint(AssetGraphSettings.DEFAULT_INPUTPOINT_LABEL));
 					newNode.AddConnectionPoint(new OutputPoint(AssetGraphSettings.BUNDLIZER_BUNDLE_OUTPUTPOINT_LABEL));
-					Debug.LogError("作成時にここにも付けとくかどうか、、");
 					break;
 				}
 
