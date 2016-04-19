@@ -34,10 +34,6 @@ namespace AssetGraph {
 			GenerateScript(ScriptType.SCRIPT_PREFABRICATOR);
 		}
 		
-		[MenuItem(AssetGraphSettings.GUI_TEXT_MENU_GENERATE_BUNDLIZER)] public static void GenerateBundlizer () {
-			GenerateScript(ScriptType.SCRIPT_BUNDLIZER);
-		}
-		
 		[MenuItem(AssetGraphSettings.GUI_TEXT_MENU_GENERATE_FINALLY)] public static void GenerateFinally () {
 			GenerateScript(ScriptType.SCRIPT_FINALLY);
 		}
