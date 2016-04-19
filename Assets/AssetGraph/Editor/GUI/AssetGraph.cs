@@ -27,7 +27,6 @@ namespace AssetGraph {
 
 		public enum ScriptType : int {
 			SCRIPT_PREFABRICATOR,
-			SCRIPT_BUNDLIZER,
 			SCRIPT_FINALLY
 		}
 		
@@ -105,11 +104,6 @@ namespace AssetGraph {
 					destinationPath = FileController.PathCombine(destinationBasePath, "MyPrefabricator.cs");
 					break;
 				}
-				case ScriptType.SCRIPT_BUNDLIZER: {
-					sourceFileName = FileController.PathCombine(AssetGraphSettings.SCRIPTSAMPLE_PATH, "MyBundlizer.cs.sample");
-					destinationPath = FileController.PathCombine(destinationBasePath, "MyBundlizer.cs");
-					break;
-				}
 				case ScriptType.SCRIPT_FINALLY: {
 					sourceFileName = FileController.PathCombine(AssetGraphSettings.SCRIPTSAMPLE_PATH, "MyFinally.cs.sample");
 					destinationPath = FileController.PathCombine(destinationBasePath, "MyFinally.cs");
@@ -133,6 +127,16 @@ namespace AssetGraph {
 			FileController.RemakeDirectory(AssetGraphSettings.APPLICATIONDATAPATH_CACHE_PATH);
 
 			AssetDatabase.Refresh();
+		}
+		
+		[MenuItem(AssetGraphSettings.GUI_TEXT_MENU_DELETE_IMPORTSETTING_SAMPLE)]
+		public static void DeleteImportSettingSample () {
+			Debug.LogError("not yet.");
+		}
+		
+		[MenuItem(AssetGraphSettings.GUI_TEXT_MENU_DELETE_MODIFIER_SAMPLE)]
+		public static void DeleteModifierSample () {
+			Debug.LogError("not yet.");
 		}
 
 
@@ -1371,9 +1375,7 @@ namespace AssetGraph {
 				}
 				
 				case AssetGraphSettings.NodeKind.FILTER_SCRIPT:
-				// case AssetGraphSettings.NodeKind.IMPORTER_SCRIPT:
-				case AssetGraphSettings.NodeKind.PREFABRICATOR_SCRIPT:
-				case AssetGraphSettings.NodeKind.BUNDLIZER_SCRIPT: {
+				case AssetGraphSettings.NodeKind.PREFABRICATOR_SCRIPT: {
 					nodeDict[AssetGraphSettings.NODE_SCRIPT_TYPE] = node.scriptType;
 					nodeDict[AssetGraphSettings.NODE_SCRIPT_PATH] = node.scriptPath;
 					break;
@@ -1381,12 +1383,17 @@ namespace AssetGraph {
 
 				case AssetGraphSettings.NodeKind.FILTER_GUI: {
 					nodeDict[AssetGraphSettings.NODE_FILTER_CONTAINS_KEYWORDS] = node.filterContainsKeywords;
+					nodeDict[AssetGraphSettings.NODE_FILTER_CONTAINS_KEYTYPES] = node.filterContainsKeytypes;
 					break;
 				}
 
-				// case AssetGraphSettings.NodeKind.IMPORTER_GUI:
 				case AssetGraphSettings.NodeKind.IMPORTSETTING_GUI: {
 					nodeDict[AssetGraphSettings.NODE_IMPORTER_PACKAGES] = node.importerPackages.ReadonlyDict();
+					break;
+				}
+				
+				case AssetGraphSettings.NodeKind.MODIFIER_GUI: {
+					nodeDict[AssetGraphSettings.NODE_MODIFIER_PACKAGES] = node.modifierPackages.ReadonlyDict();
 					break;
 				}
 
@@ -1451,9 +1458,7 @@ namespace AssetGraph {
 				// case AssetGraphSettings.NodeKind.IMPORTER_SCRIPT:
 
 				case AssetGraphSettings.NodeKind.PREFABRICATOR_SCRIPT:
-				case AssetGraphSettings.NodeKind.PREFABRICATOR_GUI:
-
-				case AssetGraphSettings.NodeKind.BUNDLIZER_SCRIPT: {
+				case AssetGraphSettings.NodeKind.PREFABRICATOR_GUI: {
 					var scriptType = nodeDict[AssetGraphSettings.NODE_SCRIPT_TYPE] as string;
 					var scriptPath = nodeDict[AssetGraphSettings.NODE_SCRIPT_PATH] as string;
 
@@ -1473,8 +1478,14 @@ namespace AssetGraph {
 					foreach (var filterContainsKeywordSource in filterContainsKeywordsSource) {
 						filterContainsKeywords.Add(filterContainsKeywordSource.ToString());
 					}
+					
+					var filterContainsKeytypesSource = nodeDict[AssetGraphSettings.NODE_FILTER_CONTAINS_KEYTYPES] as List<object>;
+					var filterContainsKeytypes = new List<string>();
+					foreach (var filterContainsKeytypeSource in filterContainsKeytypesSource) {
+						filterContainsKeytypes.Add(filterContainsKeytypeSource.ToString());
+					}
 
-					var newNode = Node.GUINodeForFilter(currentNodesCount, name, id, kind, filterContainsKeywords, x, y);
+					var newNode = Node.GUINodeForFilter(currentNodesCount, name, id, kind, filterContainsKeywords, filterContainsKeytypes, x, y);
 
 					var outputLabelsList = nodeDict[AssetGraphSettings.NODE_OUTPUT_LABELS] as List<object>;
 					foreach (var outputLabelSource in outputLabelsList) {
@@ -1484,13 +1495,28 @@ namespace AssetGraph {
 					return newNode;
 				}
 
-				// case AssetGraphSettings.NodeKind.IMPORTER_GUI:
 				case AssetGraphSettings.NodeKind.IMPORTSETTING_GUI: {
 					var defaultPlatformAndPackagesSource = nodeDict[AssetGraphSettings.NODE_IMPORTER_PACKAGES] as Dictionary<string, object>;
 					var defaultPlatformAndPackages = new Dictionary<string, string>();
 					foreach (var platform_package_key in defaultPlatformAndPackagesSource.Keys) defaultPlatformAndPackages[platform_package_key] = defaultPlatformAndPackagesSource[platform_package_key] as string;
 
 					var newNode = Node.GUINodeForImport(currentNodesCount, name, id, kind, defaultPlatformAndPackages, x, y);
+					CollectPackage(defaultPlatformAndPackages.Keys.ToList());
+
+					var outputLabelsList = nodeDict[AssetGraphSettings.NODE_OUTPUT_LABELS] as List<object>;
+					foreach (var outputLabelSource in outputLabelsList) {
+						var label = outputLabelSource as string;
+						newNode.AddConnectionPoint(new OutputPoint(label));
+					}
+					return newNode;
+				}
+				
+				case AssetGraphSettings.NodeKind.MODIFIER_GUI: {
+					var defaultPlatformAndPackagesSource = nodeDict[AssetGraphSettings.NODE_MODIFIER_PACKAGES] as Dictionary<string, object>;
+					var defaultPlatformAndPackages = new Dictionary<string, string>();
+					foreach (var platform_package_key in defaultPlatformAndPackagesSource.Keys) defaultPlatformAndPackages[platform_package_key] = defaultPlatformAndPackagesSource[platform_package_key] as string;
+
+					var newNode = Node.GUINodeForModify(currentNodesCount, name, id, kind, defaultPlatformAndPackages, x, y);
 					CollectPackage(defaultPlatformAndPackages.Keys.ToList());
 
 					var outputLabelsList = nodeDict[AssetGraphSettings.NODE_OUTPUT_LABELS] as List<object>;
@@ -1583,9 +1609,7 @@ namespace AssetGraph {
 
 		private Type IsAcceptableScriptType (Type type) {
 			if (typeof(FilterBase).IsAssignableFrom(type)) return typeof(FilterBase);
-			if (typeof(ImporterBase).IsAssignableFrom(type)) return typeof(ImporterBase);
 			if (typeof(PrefabricatorBase).IsAssignableFrom(type)) return typeof(PrefabricatorBase);
-			if (typeof(BundlizerBase).IsAssignableFrom(type)) return typeof(BundlizerBase);
 			Debug.LogError("failed to accept:" + type);
 			return null;
 		}
@@ -1606,25 +1630,14 @@ namespace AssetGraph {
 				}
 			}
 			
-			// if (scriptBaseType == typeof(ImporterBase)) {
-			// 	var kind = AssetGraphSettings.NodeKind.IMPORTER_SCRIPT;
-			// 	newNode = Node.ScriptNode(nodes.Count, scriptName, nodeId, kind, scriptType, scriptPath, x, y);
-			// 	newNode.AddConnectionPoint(new InputPoint(AssetGraphSettings.DEFAULT_INPUTPOINT_LABEL));
-			// 	newNode.AddConnectionPoint(new OutputPoint(AssetGraphSettings.DEFAULT_OUTPUTPOINT_LABEL));
-			// }
-			
+
 			if (scriptBaseType == typeof(PrefabricatorBase)) {
 				var kind = AssetGraphSettings.NodeKind.PREFABRICATOR_SCRIPT;
 				newNode = Node.ScriptNode(nodes.Count, scriptName, nodeId, kind, scriptType, scriptPath, x, y);
 				newNode.AddConnectionPoint(new InputPoint(AssetGraphSettings.DEFAULT_INPUTPOINT_LABEL));
 				newNode.AddConnectionPoint(new OutputPoint(AssetGraphSettings.DEFAULT_OUTPUTPOINT_LABEL));
 			}
-			if (scriptBaseType == typeof(BundlizerBase)) {
-				var kind = AssetGraphSettings.NodeKind.BUNDLIZER_SCRIPT;
-				newNode = Node.ScriptNode(nodes.Count, scriptName, nodeId, kind, scriptType, scriptPath, x, y);
-				newNode.AddConnectionPoint(new InputPoint(AssetGraphSettings.DEFAULT_INPUTPOINT_LABEL));
-				newNode.AddConnectionPoint(new OutputPoint(AssetGraphSettings.DEFAULT_OUTPUTPOINT_LABEL));
-			}
+			
 			
 			if (newNode == null) {
 				Debug.LogError("failed to add node. no type found, scriptName:" + scriptName + " scriptPath:" + scriptPath + " scriptBaseType:" + scriptBaseType);
@@ -1652,18 +1665,29 @@ namespace AssetGraph {
 
 				case AssetGraphSettings.NodeKind.FILTER_GUI: {
 					var newFilterKeywords = new List<string>();
-					newNode = Node.GUINodeForFilter(nodes.Count, nodeName, nodeId, kind, newFilterKeywords, x, y);
+					var newFilterKeytypes = new List<string>();
+					newNode = Node.GUINodeForFilter(nodes.Count, nodeName, nodeId, kind, newFilterKeywords, newFilterKeytypes, x, y);
 					newNode.AddConnectionPoint(new InputPoint(AssetGraphSettings.DEFAULT_INPUTPOINT_LABEL));
 					break;
 				}
 				
-				// case AssetGraphSettings.NodeKind.IMPORTER_GUI:
 				case AssetGraphSettings.NodeKind.IMPORTSETTING_GUI: {
 					var importerPackages = new Dictionary<string, string> {
 						{AssetGraphSettings.PLATFORM_DEFAULT_NAME, string.Empty}
 					};
 
 					newNode = Node.GUINodeForImport(nodes.Count, nodeName, nodeId, kind, importerPackages, x, y);
+					newNode.AddConnectionPoint(new InputPoint(AssetGraphSettings.DEFAULT_INPUTPOINT_LABEL));
+					newNode.AddConnectionPoint(new OutputPoint(AssetGraphSettings.DEFAULT_OUTPUTPOINT_LABEL));
+					break;
+				}
+				
+				case AssetGraphSettings.NodeKind.MODIFIER_GUI: {
+					var modifierPackages = new Dictionary<string, string> {
+						{AssetGraphSettings.PLATFORM_DEFAULT_NAME, string.Empty}
+					};
+
+					newNode = Node.GUINodeForModify(nodes.Count, nodeName, nodeId, kind, modifierPackages, x, y);
 					newNode.AddConnectionPoint(new InputPoint(AssetGraphSettings.DEFAULT_INPUTPOINT_LABEL));
 					newNode.AddConnectionPoint(new OutputPoint(AssetGraphSettings.DEFAULT_OUTPUTPOINT_LABEL));
 					break;
@@ -2110,8 +2134,13 @@ namespace AssetGraph {
 					break;
 				}
 				
-				// case AssetGraphSettings.NodeKind.IMPORTER_GUI:
 				case AssetGraphSettings.NodeKind.IMPORTSETTING_GUI: {
+					newNode.AddConnectionPoint(new InputPoint(AssetGraphSettings.DEFAULT_INPUTPOINT_LABEL));
+					newNode.AddConnectionPoint(new OutputPoint(AssetGraphSettings.DEFAULT_OUTPUTPOINT_LABEL));
+					break;
+				}
+				
+				case AssetGraphSettings.NodeKind.MODIFIER_GUI: {
 					newNode.AddConnectionPoint(new InputPoint(AssetGraphSettings.DEFAULT_INPUTPOINT_LABEL));
 					newNode.AddConnectionPoint(new OutputPoint(AssetGraphSettings.DEFAULT_OUTPUTPOINT_LABEL));
 					break;

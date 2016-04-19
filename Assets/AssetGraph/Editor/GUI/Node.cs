@@ -44,7 +44,9 @@ namespace AssetGraph {
 		[SerializeField] public SerializablePseudoDictionary loadPath;
 		[SerializeField] public SerializablePseudoDictionary exportPath;
 		[SerializeField] public List<string> filterContainsKeywords;
+		[SerializeField] public List<string> filterContainsKeytypes;
 		[SerializeField] public SerializablePseudoDictionary importerPackages;
+		[SerializeField] public SerializablePseudoDictionary modifierPackages;
 		[SerializeField] public SerializablePseudoDictionary groupingKeyword;
 		[SerializeField] public SerializablePseudoDictionary bundleNameTemplate;
 		[SerializeField] public SerializablePseudoDictionary bundleUseOutput;
@@ -102,7 +104,7 @@ namespace AssetGraph {
 			);
 		}
 
-		public static Node GUINodeForFilter (int index, string name, string nodeId, AssetGraphSettings.NodeKind kind, List<string> filterContainsKeywords, float x, float y) {
+		public static Node GUINodeForFilter (int index, string name, string nodeId, AssetGraphSettings.NodeKind kind, List<string> filterContainsKeywords, List<string> filterContainsKeytypes, float x, float y) {
 			return new Node(
 				index: index,
 				name: name,
@@ -110,7 +112,8 @@ namespace AssetGraph {
 				kind: kind,
 				x: x,
 				y: y,
-				filterContainsKeywords: filterContainsKeywords
+				filterContainsKeywords: filterContainsKeywords,
+				filterContainsKeytypes: filterContainsKeytypes
 			);
 		}
 
@@ -123,6 +126,18 @@ namespace AssetGraph {
 				x: x,
 				y: y,
 				importerPackages: importerPackages
+			);
+		}
+		
+		public static Node GUINodeForModify (int index, string name, string nodeId, AssetGraphSettings.NodeKind kind, Dictionary<string, string> modifierPackages, float x, float y) {
+			return new Node(
+				index: index,
+				name: name,
+				nodeId: nodeId,
+				kind: kind,
+				x: x,
+				y: y,
+				modifierPackages: modifierPackages
 			);
 		}
 
@@ -266,19 +281,35 @@ namespace AssetGraph {
 					}
 
 					case AssetGraphSettings.NodeKind.FILTER_GUI: {
-						EditorGUILayout.HelpBox("Filter: filtering files by keywords.", MessageType.Info);
+						EditorGUILayout.HelpBox("Filter: filtering files by keywords and types.", MessageType.Info);
 						UpdateNodeName(node);
 						
 						using (new EditorGUILayout.VerticalScope(GUI.skin.box, new GUILayoutOption[0])) {
+							GUILayout.Label("Contains keyword and type");
 							for (int i = 0; i < node.filterContainsKeywords.Count; i++) {
-								GUILayout.BeginHorizontal();
-								{
-									if (GUILayout.Button("-")) {
+								
+								using (new GUILayout.HorizontalScope()) {
+									if (GUILayout.Button("-", GUILayout.Width(30))) {
 										node.BeforeSave();
 										node.filterContainsKeywords.RemoveAt(i);
 										node.FilterOutputPointsDeleted(i);
 									} else {
-										var newContainsKeyword = EditorGUILayout.TextField("Contains", node.filterContainsKeywords[i]);
+										var newContainsKeyword = string.Empty;
+										using (new EditorGUILayout.HorizontalScope()) {
+											
+											newContainsKeyword = EditorGUILayout.TextField(node.filterContainsKeywords[i], GUILayout.Width(120));
+											var currentIndex = i;
+											if (GUILayout.Button(node.filterContainsKeytypes[i], "Popup")) {
+												ShowFilterKeyTypeMenu(
+													node.filterContainsKeytypes[currentIndex],
+													(string selectedTypeStr) => {
+														node.BeforeSave();
+														node.filterContainsKeytypes[currentIndex] = selectedTypeStr;
+														node.Save();
+													} 
+												);
+											}
+										}
 										var currentKeywordsSource = new List<string>(node.filterContainsKeywords);
 										currentKeywordsSource.RemoveAt(i);
 										var currentKeywords = new List<string>(currentKeywordsSource);
@@ -300,7 +331,6 @@ namespace AssetGraph {
 										}
 									}
 								}
-								GUILayout.EndHorizontal();
 							}
 							
 							// add contains keyword interface.
@@ -308,73 +338,16 @@ namespace AssetGraph {
 								node.BeforeSave();
 								var addingIndex = node.filterContainsKeywords.Count;
 								var newKeyword = AssetGraphSettings.DEFAULT_FILTER_KEYWORD;
+								
 								node.filterContainsKeywords.Add(newKeyword);
+								node.filterContainsKeytypes.Add(AssetGraphSettings.DEFAULT_FILTER_KEYTYPE);
+								
 								node.FilterOutputPointsAdded(addingIndex, AssetGraphSettings.DEFAULT_FILTER_KEYWORD);
 							}
 						}
 
 						break;
 					}
-
-					// case AssetGraphSettings.NodeKind.IMPORTER_SCRIPT: {
-					// 	EditorGUILayout.HelpBox("Importer: import files by script.", MessageType.Info);
-					// 	UpdateNodeName(node);
-
-					// 	EditorGUILayout.LabelField("Script Path", node.scriptPath);
-					// 	break;
-					// }
-
-					// case AssetGraphSettings.NodeKind.IMPORTER_GUI: {
-					// 	EditorGUILayout.HelpBox("Importer: import files with applying settings from SamplingAssets.", MessageType.Info);
-					// 	UpdateNodeName(node);
-						
-					// 	GUILayout.Space(10f);
-
-					// 	if (packageEditMode) EditorGUI.BeginDisabledGroup(true);
-					// 	/*
-					// 		importer node has no platform key. 
-					// 		platform key is contained by Unity's importer inspector itself.
-					// 	*/
-					// 	UpdateCurrentPackage(node);
-
-					// 	{
-					// 		using (new EditorGUILayout.VerticalScope(GUI.skin.box, new GUILayoutOption[0])) {
-					// 			var nodeId = node.nodeId;
-					// 			var currentImporterPackage = node.currentPackage;
-					// 			if (string.IsNullOrEmpty(currentImporterPackage)) currentImporterPackage = AssetGraphSettings.PLATFORM_DEFAULT_PACKAGE;
-								
-					// 			var samplingPath = FileController.PathCombine(AssetGraphSettings.IMPORTER_SAMPLING_PLACE, nodeId, currentImporterPackage);
-					// 			IntegratedGUIImporter.ValidateImportSample(samplingPath,
-					// 				(string noFolderFound) => {
-					// 					EditorGUILayout.LabelField("Sampling Asset", "no asset found. please Reload first.");
-					// 				},
-					// 				(string noFilesFound) => {
-					// 					EditorGUILayout.LabelField("Sampling Asset", "no asset found. please Reload first.");
-					// 				},
-					// 				(string samplingAssetPath) => {
-					// 					EditorGUILayout.LabelField("Sampling Asset Path", samplingAssetPath);
-					// 					if (GUILayout.Button("Modify Import Setting")) {
-					// 						var obj = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(samplingAssetPath);
-					// 						Selection.activeObject = obj;
-					// 					}
-					// 					if (GUILayout.Button("Reset Import Setting")) {
-					// 						// delete all import setting files.
-					// 						FileController.RemakeDirectory(samplingPath);
-					// 						node.Save();
-					// 					}
-					// 				},
-					// 				(string tooManyFilesFoundMessage) => {
-					// 					EditorGUILayout.LabelField("Sampling Asset", "too many assets found. please delete files at:" + samplingPath);
-					// 				}
-					// 			);
-					// 		}
-					// 	}
-
-					// 	if (packageEditMode) EditorGUI.EndDisabledGroup();
-					// 	UpdateDeleteSetting(node);
-
-					// 	break;
-					// }
 					
 					case AssetGraphSettings.NodeKind.IMPORTSETTING_GUI : {
 						EditorGUILayout.HelpBox("ImportSetting: applying settings.", MessageType.Info);
@@ -396,20 +369,73 @@ namespace AssetGraph {
 								if (string.IsNullOrEmpty(currentImporterPackage)) currentImporterPackage = AssetGraphSettings.PLATFORM_DEFAULT_PACKAGE;
 								
 								var samplingPath = FileController.PathCombine(AssetGraphSettings.IMPORTER_SAMPLING_PLACE, nodeId, currentImporterPackage);
+								
 								IntegratedGUIImportSetting.ValidateImportSample(samplingPath,
 									(string noFolderFound) => {
-										EditorGUILayout.LabelField("Sampling Asset", "no asset found. please Reload first.");
+										EditorGUILayout.LabelField("Sampling Asset", "no sampling asset found. please Reload first.");
 									},
 									(string noFilesFound) => {
-										EditorGUILayout.LabelField("Sampling Asset", "no asset found. please Reload first.");
+										EditorGUILayout.LabelField("Sampling Asset", "no sampling asset found. please Reload first.");
 									},
 									(string samplingAssetPath) => {
 										EditorGUILayout.LabelField("Sampling Asset Path", samplingAssetPath);
-										if (GUILayout.Button("Modify Import Setting")) {
+										if (GUILayout.Button("Setup Import Setting")) {
 											var obj = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(samplingAssetPath);
 											Selection.activeObject = obj;
 										}
 										if (GUILayout.Button("Reset Import Setting")) {
+											// delete all import setting files.
+											FileController.RemakeDirectory(samplingPath);
+											node.Save();
+										}
+									},
+									(string tooManyFilesFoundMessage) => {
+										EditorGUILayout.LabelField("Sampling Asset", "too many assets found. please delete files at:" + samplingPath);
+									}
+								);
+							}
+						}
+
+						if (packageEditMode) EditorGUI.EndDisabledGroup();
+						UpdateDeleteSetting(node);
+
+						break;
+					}
+					
+					case AssetGraphSettings.NodeKind.MODIFIER_GUI : {
+						EditorGUILayout.HelpBox("Modifier: applying settings to Assets.", MessageType.Info);
+						UpdateNodeName(node);
+						
+						GUILayout.Space(10f);
+
+						if (packageEditMode) EditorGUI.BeginDisabledGroup(true);
+						/*
+							modifier node has no platform key. 
+						*/
+						UpdateCurrentPackage(node);
+
+						{
+							using (new EditorGUILayout.VerticalScope(GUI.skin.box, new GUILayoutOption[0])) {
+								var nodeId = node.nodeId;
+								var currentModifierPackage = node.currentPackage;
+								if (string.IsNullOrEmpty(currentModifierPackage)) currentModifierPackage = AssetGraphSettings.PLATFORM_DEFAULT_PACKAGE;
+								
+								var samplingPath = FileController.PathCombine(AssetGraphSettings.MODIFIER_SAMPLING_PLACE, nodeId, currentModifierPackage);
+								
+								IntegratedGUIModifier.ValidateModifierSample(samplingPath,
+									(string noFolderFound) => {
+										EditorGUILayout.LabelField("Sampling Asset", "no sampling asset found. please Reload first.");
+									},
+									(string noFilesFound) => {
+										EditorGUILayout.LabelField("Sampling Asset", "no sampling asset found. please Reload first.");
+									},
+									(string samplingAssetPath) => {
+										EditorGUILayout.LabelField("Sampling Asset Path", samplingAssetPath);
+										if (GUILayout.Button("Setup Modifier Setting")) {
+											var obj = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(samplingAssetPath);
+											Selection.activeObject = obj;
+										}
+										if (GUILayout.Button("Reset Modifier Setting")) {
 											// delete all import setting files.
 											FileController.RemakeDirectory(samplingPath);
 											node.Save();
@@ -508,14 +534,6 @@ namespace AssetGraph {
 								node.Save();
 							}
 						}
-						break;
-					}
-
-					case AssetGraphSettings.NodeKind.BUNDLIZER_SCRIPT: {
-						EditorGUILayout.HelpBox("Bundlizer: generate AssetBundle by script.", MessageType.Info);
-						UpdateNodeName(node);
-
-						EditorGUILayout.LabelField("Script Path", node.scriptPath);
 						break;
 					}
 
@@ -961,7 +979,9 @@ namespace AssetGraph {
 			Dictionary<string, string> loadPath = null, 
 			Dictionary<string, string> exportPath = null, 
 			List<string> filterContainsKeywords = null, 
+			List<string> filterContainsKeytypes = null, 
 			Dictionary<string, string> importerPackages = null,
+			Dictionary<string, string> modifierPackages = null,
 			Dictionary<string, string> groupingKeyword = null,
 			Dictionary<string, string> bundleNameTemplate = null,
 			Dictionary<string, string> bundleUseOutput = null,
@@ -978,7 +998,9 @@ namespace AssetGraph {
 			if (loadPath != null) this.loadPath = new SerializablePseudoDictionary(loadPath);
 			if (exportPath != null) this.exportPath = new SerializablePseudoDictionary(exportPath);
 			this.filterContainsKeywords = filterContainsKeywords;
+			this.filterContainsKeytypes = filterContainsKeytypes;
 			if (importerPackages != null) this.importerPackages = new SerializablePseudoDictionary(importerPackages);
+			if (modifierPackages != null) this.modifierPackages = new SerializablePseudoDictionary(modifierPackages);
 			if (groupingKeyword != null) this.groupingKeyword = new SerializablePseudoDictionary(groupingKeyword);
 			if (bundleNameTemplate != null) this.bundleNameTemplate = new SerializablePseudoDictionary(bundleNameTemplate);
 			if (bundleUseOutput != null) this.bundleUseOutput = new SerializablePseudoDictionary(bundleUseOutput);
@@ -999,10 +1021,13 @@ namespace AssetGraph {
 					break;
 				}
 				
-				// case AssetGraphSettings.NodeKind.IMPORTER_SCRIPT:
-				// case AssetGraphSettings.NodeKind.IMPORTER_GUI:
 				case AssetGraphSettings.NodeKind.IMPORTSETTING_GUI: {
 					this.nodeInterfaceTypeStr = "flow node 2";
+					break;
+				}
+				
+				case AssetGraphSettings.NodeKind.MODIFIER_GUI: {
+					this.nodeInterfaceTypeStr = "flow node 4";
 					break;
 				}
 
@@ -1017,8 +1042,7 @@ namespace AssetGraph {
 					this.nodeInterfaceTypeStr = "flow node 4";
 					break;
 				}
-
-				case AssetGraphSettings.NodeKind.BUNDLIZER_SCRIPT:
+				
 				case AssetGraphSettings.NodeKind.BUNDLIZER_GUI: {
 					this.nodeInterfaceTypeStr = "flow node 5";
 					break;
@@ -1049,7 +1073,9 @@ namespace AssetGraph {
 				(this.loadPath != null) ? loadPath.ReadonlyDict() : null,
 				(this.exportPath != null) ? this.exportPath.ReadonlyDict() : null,
 				this.filterContainsKeywords,
+				this.filterContainsKeytypes,
 				(this.importerPackages != null) ? this.importerPackages.ReadonlyDict() : null,
+				(this.modifierPackages != null) ? this.modifierPackages.ReadonlyDict() : null,
 				(this.groupingKeyword != null) ? this.groupingKeyword.ReadonlyDict() : null,
 				(this.bundleNameTemplate != null) ? this.bundleNameTemplate.ReadonlyDict() : null,
 				(this.bundleUseOutput != null) ? this.bundleUseOutput.ReadonlyDict() : null,
@@ -1066,14 +1092,23 @@ namespace AssetGraph {
 			Emit(new OnNodeEvent(OnNodeEvent.EventType.EVENT_BEFORESAVE, this, Vector2.zero, null));
 			currentPackage = newCurrentPackage;
 
-			// /*
-			// 	if changed node is importer, should run [new package import] for setting.
-			// */
-			// if (kind == AssetGraphSettings.NodeKind.IMPORTER_GUI) {
-			// 	// importer node's platform is absolutely PLATFORM_DEFAULT_NAME.
-			// 	var platformPackageKey = GraphStackController.Platform_Package_Key(AssetGraphSettings.PLATFORM_DEFAULT_NAME, currentPackage);
-			// 	if (!importerPackages.ContainsKey(platformPackageKey)) importerPackages.Add(platformPackageKey, string.Empty);
-			// }
+			/*
+				if changed node is importSetting, should run [new package import] for setting.
+			*/
+			if (kind == AssetGraphSettings.NodeKind.IMPORTSETTING_GUI) {
+				// importer node's platform is absolutely PLATFORM_DEFAULT_NAME.
+				var platformPackageKey = GraphStackController.Platform_Package_Key(AssetGraphSettings.PLATFORM_DEFAULT_NAME, currentPackage);
+				if (!importerPackages.ContainsKey(platformPackageKey)) importerPackages.Add(platformPackageKey, string.Empty);
+			}
+			
+			/*
+				if changed node is Modifier, should run [new package import] for setting.
+			*/
+			if (kind == AssetGraphSettings.NodeKind.MODIFIER_GUI) {
+				// modifier node's platform is absolutely PLATFORM_DEFAULT_NAME.
+				var platformPackageKey = GraphStackController.Platform_Package_Key(AssetGraphSettings.PLATFORM_DEFAULT_NAME, currentPackage);
+				if (!modifierPackages.ContainsKey(platformPackageKey)) modifierPackages.Add(platformPackageKey, string.Empty);
+			}
 			
 			Emit(new OnNodeEvent(OnNodeEvent.EventType.EVENT_SETUPWITHPACKAGE, this, Vector2.zero, null));
 			Save();
@@ -1086,9 +1121,13 @@ namespace AssetGraph {
 					break;
 				}
 				
-				// case AssetGraphSettings.NodeKind.IMPORTER_GUI:
 				case AssetGraphSettings.NodeKind.IMPORTSETTING_GUI: {
 					importerPackages.Remove(platformPackageKey);
+					break;
+				}
+
+				case AssetGraphSettings.NodeKind.MODIFIER_GUI: {
+					modifierPackages.Remove(platformPackageKey);
 					break;
 				}
 
@@ -1136,10 +1175,13 @@ namespace AssetGraph {
 					break;
 				}
 				
-				// case AssetGraphSettings.NodeKind.IMPORTER_SCRIPT:
-				// case AssetGraphSettings.NodeKind.IMPORTER_GUI:
 				case AssetGraphSettings.NodeKind.IMPORTSETTING_GUI: {
 					this.nodeInterfaceTypeStr = "flow node 2 on";
+					break;
+				}
+				
+				case AssetGraphSettings.NodeKind.MODIFIER_GUI: {
+					this.nodeInterfaceTypeStr = "flow node 4 on";
 					break;
 				}
 
@@ -1154,8 +1196,7 @@ namespace AssetGraph {
 					this.nodeInterfaceTypeStr = "flow node 4 on";
 					break;
 				}
-
-				case AssetGraphSettings.NodeKind.BUNDLIZER_SCRIPT:
+				
 				case AssetGraphSettings.NodeKind.BUNDLIZER_GUI: {
 					this.nodeInterfaceTypeStr = "flow node 5 on";
 					break;
@@ -1187,10 +1228,13 @@ namespace AssetGraph {
 					break;
 				}
 				
-				// case AssetGraphSettings.NodeKind.IMPORTER_SCRIPT:
-				// case AssetGraphSettings.NodeKind.IMPORTER_GUI:
 				case AssetGraphSettings.NodeKind.IMPORTSETTING_GUI: {
 					this.nodeInterfaceTypeStr = "flow node 2";
+					break;
+				}
+				
+				case AssetGraphSettings.NodeKind.MODIFIER_GUI: {
+					this.nodeInterfaceTypeStr = "flow node 4";
 					break;
 				}
 
@@ -1205,8 +1249,7 @@ namespace AssetGraph {
 					this.nodeInterfaceTypeStr = "flow node 4";
 					break;
 				}
-
-				case AssetGraphSettings.NodeKind.BUNDLIZER_SCRIPT:
+				
 				case AssetGraphSettings.NodeKind.BUNDLIZER_GUI: {
 					this.nodeInterfaceTypeStr = "flow node 5";
 					break;
@@ -1630,6 +1673,29 @@ namespace AssetGraph {
 			}
 			
 			return containedPoints;
+		}
+		
+		
+		public static void ShowFilterKeyTypeMenu (string current, Action<string> ExistSelected) {
+			var menu = new GenericMenu();
+			
+			menu.AddDisabledItem(new GUIContent(current));
+			
+			menu.AddSeparator(string.Empty);
+			
+			for (var i = 0; i < TypeBinder.KeyTypes.Count; i++) {
+				var type = TypeBinder.KeyTypes[i];
+				if (type == current) continue;
+				
+				menu.AddItem(
+					new GUIContent(type),
+					false,
+					() => {
+						ExistSelected(type);
+					}
+				);
+			}
+			menu.ShowAsContext();
 		}
 
 		public static void ShowPackageMenu (string currentPackage, Action NoneSelected, Action<string> ExistSelected) {
