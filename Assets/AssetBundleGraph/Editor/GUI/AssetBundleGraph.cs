@@ -11,53 +11,45 @@ using MiniJSONForAssetBundleGraph;
  
 
 namespace AssetBundleGraph {
+	
+	public struct ThroughputAsset {
+		public readonly string path;
+		public readonly bool isBundled;
+		
+		public ThroughputAsset (string path, bool isBundled) {
+			this.path = path;
+			this.isBundled = isBundled;
+		}
+	}
+	
 	public class AssetBundleGraph : EditorWindow {
 		/*
 			menu items
 		*/
-<<<<<<< HEAD:Assets/AssetGraph/Editor/GUI/AssetGraph.cs
-		[MenuItem(AssetGraphSettings.GUI_TEXT_MENU_OPEN, false, 1)] public static void Open () {
-			GetWindow<AssetGraph>();
-		}
-
 		
-		[MenuItem(AssetGraphSettings.GUI_TEXT_MENU_BUILD, false, 1 + 11)] public static void BuildFromMenu () {
-			var lastPackageStr = LastPackage();
-			Run(lastPackageStr);
-=======
-		[MenuItem(AssetBundleGraphSettings.GUI_TEXT_MENU_OPEN, false, 1)]
-		public static void Open () {
+		[MenuItem(AssetBundleGraphSettings.GUI_TEXT_MENU_OPEN, false, 1)] public static void Open () {
 			GetWindow<AssetBundleGraph>();
 		}
 
-		[MenuItem(AssetBundleGraphSettings.GUI_TEXT_MENU_BUILD, false, 1 + 11)]
-		public static void BuildFromMenu () {
+		[MenuItem(AssetBundleGraphSettings.GUI_TEXT_MENU_BUILD, false, 1 + 11)] public static void BuildFromMenu () {
 			Run();
->>>>>>> unity_integration:Assets/AssetBundleGraph/Editor/GUI/AssetBundleGraph.cs
 		}
 
 		public enum ScriptType : int {
 			SCRIPT_PREFABRICATOR,
 			SCRIPT_FINALLY
 		}
-<<<<<<< HEAD:Assets/AssetGraph/Editor/GUI/AssetGraph.cs
-		
-		[MenuItem(AssetGraphSettings.GUI_TEXT_MENU_GENERATE_PREFABRICATOR)] public static void GeneratePrefabricator () {
-			GenerateScript(ScriptType.SCRIPT_PREFABRICATOR);
-		}
-		
-		[MenuItem(AssetGraphSettings.GUI_TEXT_MENU_GENERATE_FINALLY)] public static void GenerateFinally () {
-=======
 
-		[MenuItem(AssetBundleGraphSettings.GUI_TEXT_MENU_GENERATE_PREFABRICATOR)]
-		public static void GeneratePrefabricator () {
+
+		[MenuItem(AssetBundleGraphSettings.GUI_TEXT_MENU_GENERATE_PREFABRICATOR)] public static void GeneratePrefabricator () {
 			GenerateScript(ScriptType.SCRIPT_PREFABRICATOR);
 		}
-		[MenuItem(AssetBundleGraphSettings.GUI_TEXT_MENU_GENERATE_FINALLY)]
-		public static void GenerateFinally () {
->>>>>>> unity_integration:Assets/AssetBundleGraph/Editor/GUI/AssetBundleGraph.cs
+		
+		[MenuItem(AssetBundleGraphSettings.GUI_TEXT_MENU_GENERATE_FINALLY)] public static void GenerateFinally () {
 			GenerateScript(ScriptType.SCRIPT_FINALLY);
 		}
+
+
 
 		/**
 			build from commandline.
@@ -213,7 +205,7 @@ namespace AssetBundleGraph {
 		
 		private GUIContent reloadButtonTexture;
 
-		private static Dictionary<string,Dictionary<string, List<string>>> connectionThroughputs = new Dictionary<string, Dictionary<string, List<string>>>();
+		private static Dictionary<string,Dictionary<string, List<ThroughputAsset>>> connectionThroughputs = new Dictionary<string, Dictionary<string, List<ThroughputAsset>>>();
 
 
 		[Serializable] public struct ActiveObject {
@@ -610,7 +602,7 @@ namespace AssetBundleGraph {
 			using (var sr = new StreamReader(graphDataPath)) {
 				dataStr = sr.ReadToEnd();
 			}
-
+			
 			var reloadedData = Json.Deserialize(dataStr) as Dictionary<string, object>;
 
 			// update static all node names.
@@ -690,7 +682,7 @@ namespace AssetBundleGraph {
 		public static void Finally (
 			List<Node> currentNodes,
 			List<Connection> currentConnections,
-			Dictionary<string, Dictionary<string, List<string>>> throughputsSource, 
+			Dictionary<string, Dictionary<string, List<ThroughputAsset>>> throughputsSource, 
 			bool isRun
 		) {
 			var nodeThroughputs = NodeThroughputs(currentNodes, currentConnections, throughputsSource);
@@ -728,7 +720,7 @@ namespace AssetBundleGraph {
 				if (usedNodeIds.Contains(nodeIdInCache)) continue;
 				unusedNodeResourcePaths.Add(filePath);
 			}
-
+			
 			var max = unusedNodeResourcePaths.Count * 1.0f;
 			var count = 0;
 			foreach (var unusedNodeResourcePath in unusedNodeResourcePaths) {
@@ -758,7 +750,7 @@ namespace AssetBundleGraph {
 		private static Dictionary<string, Dictionary<string, List<string>>> NodeThroughputs (
 			List<Node> currentNodes,
 			List<Connection> currentConnections,
-			Dictionary<string, Dictionary<string, List<string>>> throughputs
+			Dictionary<string, Dictionary<string, List<ThroughputAsset>>> throughputs
 		) {
 			var nodeDatas = new Dictionary<string, Dictionary<string, List<string>>>();
 
@@ -775,7 +767,8 @@ namespace AssetBundleGraph {
 					if (!nodeDatas.ContainsKey(targetNodeName)) nodeDatas[targetNodeName] = new Dictionary<string, List<string>>();
 					foreach (var groupKey in nodeThroughput.Keys) {
 						if (!nodeDatas[targetNodeName].ContainsKey(groupKey)) nodeDatas[targetNodeName][groupKey] = new List<string>();
-						nodeDatas[targetNodeName][groupKey].AddRange(nodeThroughput[groupKey]);
+						var assetPaths = nodeThroughput[groupKey].Select(asset => asset.path).ToList();
+						nodeDatas[targetNodeName][groupKey].AddRange(assetPaths);
 					}
 				}
 
@@ -789,7 +782,8 @@ namespace AssetBundleGraph {
 					if (!nodeDatas.ContainsKey(targetNodeName)) nodeDatas[targetNodeName] = new Dictionary<string, List<string>>();
 					foreach (var groupKey in nodeThroughput.Keys) {
 						if (!nodeDatas[targetNodeName].ContainsKey(groupKey)) nodeDatas[targetNodeName][groupKey] = new List<string>();
-						nodeDatas[targetNodeName][groupKey].AddRange(nodeThroughput[groupKey]);
+						var assetPaths = nodeThroughput[groupKey].Select(asset => asset.path).ToList();
+						nodeDatas[targetNodeName][groupKey].AddRange(assetPaths);
 					}
 				}
 			}
@@ -837,7 +831,7 @@ namespace AssetBundleGraph {
 						var throughputListDict = connectionThroughputs[con.connectionId];
 						con.DrawConnection(nodes, throughputListDict);
 					} else {
-						con.DrawConnection(nodes, new Dictionary<string, List<string>>());
+						con.DrawConnection(nodes, new Dictionary<string, List<ThroughputAsset>>());
 					}
 				}
 
@@ -1661,13 +1655,8 @@ namespace AssetBundleGraph {
 					};
 
 					newNode = Node.GUINodeForBundlizer(nodes.Count, nodeName, nodeId, kind, newBundlizerKeyword, newBundleUseOutput, x, y);
-<<<<<<< HEAD:Assets/AssetGraph/Editor/GUI/AssetGraph.cs
-					newNode.AddConnectionPoint(new InputPoint(AssetGraphSettings.DEFAULT_INPUTPOINT_LABEL));
-					newNode.AddConnectionPoint(new OutputPoint(AssetGraphSettings.BUNDLIZER_BUNDLE_OUTPUTPOINT_LABEL));
-=======
 					newNode.AddConnectionPoint(new InputPoint(AssetBundleGraphSettings.DEFAULT_INPUTPOINT_LABEL));
 					newNode.AddConnectionPoint(new OutputPoint(AssetBundleGraphSettings.BUNDLIZER_BUNDLE_OUTPUTPOINT_LABEL));
->>>>>>> unity_integration:Assets/AssetBundleGraph/Editor/GUI/AssetBundleGraph.cs
 					break;
 				}
 
