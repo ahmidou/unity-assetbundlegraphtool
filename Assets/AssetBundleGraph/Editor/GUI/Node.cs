@@ -198,6 +198,10 @@ namespace AssetBundleGraph {
 
 			private bool packageEditMode = false;
 
+			public override bool RequiresConstantRepaint() {
+				return true;
+			}
+
 			public override void OnInspectorGUI () {
 				var currentTarget = (NodeInspector)target;
 				var node = currentTarget.node;
@@ -307,11 +311,24 @@ namespace AssetBundleGraph {
 												);
 											}
 										}
+
+										/*
+											generate keyword + keytype string for compare exists setting vs new modifying setting at once.
+										*/
 										var currentKeywordsSource = new List<string>(node.filterContainsKeywords);
+										var currentKeytypesSource = new List<string>(node.filterContainsKeytypes);
+										
+										var currentKeytype = currentKeytypesSource[i];
+
+										for (var j = 0; j < currentKeywordsSource.Count; j++) {
+											currentKeywordsSource[j] = currentKeywordsSource[j] + currentKeytypesSource[j];
+										}
+
+										// remove current choosing one from compare target.
 										currentKeywordsSource.RemoveAt(i);
 										var currentKeywords = new List<string>(currentKeywordsSource);
 										IntegratedGUIFilter.ValidateFilter(
-											newContainsKeyword,
+											newContainsKeyword + currentKeytype,
 											currentKeywords,
 											() => {
 												EditorGUILayout.HelpBox("please use \"*\" or other keyword.", MessageType.Error);
@@ -362,7 +379,7 @@ namespace AssetBundleGraph {
 							using (new EditorGUILayout.VerticalScope(GUI.skin.box, new GUILayoutOption[0])) {
 								var nodeId = node.nodeId;
 								
-								var samplingPath = FileController.PathCombine(AssetBundleGraphSettings.IMPORTER_SAMPLING_PLACE, nodeId);
+								var samplingPath = FileController.PathCombine(AssetBundleGraphSettings.IMPORTER_SETTINGS_PLACE, nodeId);
 								
 								IntegratedGUIImportSetting.ValidateImportSample(samplingPath,
 									(string noFolderFound) => {
@@ -411,7 +428,7 @@ namespace AssetBundleGraph {
 							using (new EditorGUILayout.VerticalScope(GUI.skin.box, new GUILayoutOption[0])) {
 								var nodeId = node.nodeId;
 								
-								var samplingPath = FileController.PathCombine(AssetBundleGraphSettings.MODIFIER_SAMPLING_PLACE, nodeId);
+								var samplingPath = FileController.PathCombine(AssetBundleGraphSettings.MODIFIER_SETTINGS_PLACE, nodeId);
 								
 								IntegratedGUIModifier.ValidateModifierSample(samplingPath,
 									(string noFolderFound) => {
@@ -1354,7 +1371,7 @@ namespace AssetBundleGraph {
 			if (scaleFactor != SCALE_MAX) return;
 
 			var defaultPointTex = outputPointMarkConnectedTex;
-			
+
 			if (justConnecting && eventSource != null) {
 				if (eventSource.eventSourceNode.nodeId != this.nodeId) {
 					if (eventSource.eventSourceConnectionPoint.isInput) {
@@ -1402,8 +1419,19 @@ namespace AssetBundleGraph {
 			
 
 			var nodeTitleRect = new Rect(0, 0, baseRect.width * scaleFactor, baseRect.height * scaleFactor);
-			if (this.kind == AssetBundleGraphSettings.NodeKind.PREFABRICATOR_GUI) GUI.contentColor = Color.black;
-			if (this.kind == AssetBundleGraphSettings.NodeKind.PREFABRICATOR_SCRIPT) GUI.contentColor = Color.black; 
+			switch (this.kind) {
+				case AssetBundleGraphSettings.NodeKind.MODIFIER_GUI:
+				case AssetBundleGraphSettings.NodeKind.PREFABRICATOR_SCRIPT:
+				case AssetBundleGraphSettings.NodeKind.PREFABRICATOR_GUI: {
+					GUI.contentColor = Color.black;
+					break;
+				}
+				default: {
+					GUI.contentColor = Color.white;
+					break;
+				}
+			}
+			 
 			GUI.Label(nodeTitleRect, name, style);
 
 			if (running) EditorGUI.ProgressBar(new Rect(10f, baseRect.height - 20f, baseRect.width - 20f, 10f), progress, string.Empty);

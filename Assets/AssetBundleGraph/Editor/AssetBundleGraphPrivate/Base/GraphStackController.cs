@@ -381,11 +381,6 @@ namespace AssetBundleGraph {
 							continue;
 						}
 
-						if (!string.IsNullOrEmpty(assetData.pathUnderConnectionId)) {
-							sourcePathList.Add(new ThroughputAsset(assetData.pathUnderConnectionId, bundled));
-							continue;
-						}
-
 						if (!string.IsNullOrEmpty(assetData.exportedPath)) {
 							sourcePathList.Add(new ThroughputAsset(assetData.exportedPath, bundled));
 							continue;
@@ -1172,6 +1167,14 @@ namespace AssetBundleGraph {
 
 		public static bool IsMetaFile (string filePath) {
 			if (filePath.EndsWith(AssetBundleGraphSettings.UNITY_METAFILE_EXTENSION)) return true;
+			return false;
+		}
+
+		public static bool ContainsHiddenFiles (string filePath) {
+			var pathComponents = filePath.Split(AssetBundleGraphSettings.UNITY_FOLDER_SEPARATOR);
+			foreach (var path in pathComponents) {
+				if (path.StartsWith(AssetBundleGraphSettings.DOTSTART_HIDDEN_FILE_HEADSTRING)) return true;
+			}
 			return false;
 		}
 

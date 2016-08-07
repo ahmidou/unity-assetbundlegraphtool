@@ -172,8 +172,13 @@ namespace AssetBundleGraph {
 			var filePathsInFolder = FileController.FilePathsInFolder(nodePath);
 			foreach (var filePath in filePathsInFolder) {
 				if (GraphStackController.IsMetaFile(filePath)) continue;
+				if (GraphStackController.ContainsHiddenFiles(filePath)) continue;
 				var assetImporter = AssetImporter.GetAtPath(filePath);
 				
+				// assetImporter is null when the asset is not accepted by Unity.
+				// e.g. file.my_new_extension is ignored by Unity.
+				if (assetImporter == null) continue;
+
 				if (assetImporter.GetType() == typeof(UnityEditor.MonoImporter)) continue;
 				
 				assetImporter.assetBundleName = string.Empty;

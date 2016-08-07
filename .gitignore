@@ -67,8 +67,13 @@ ExportFolder/*
 
 Assets/TestResourceAssets/*
 
+Assets/AssetGraph/SavedSettings/ImportSettings/*
 
-Assets/AssetGraph/ImportSettingSamples/*
-
+Assets/AssetGraph/SavedSettings/ModifierSettings/*
 
 Assets/AssetBundleGraph/Cache/*
+
+obj/*
+
+*.sln
+*.userprefs

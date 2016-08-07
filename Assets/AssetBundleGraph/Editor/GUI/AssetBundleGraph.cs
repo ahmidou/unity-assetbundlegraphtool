@@ -27,7 +27,8 @@ namespace AssetBundleGraph {
 		*/
 		[MenuItem(AssetBundleGraphSettings.GUI_TEXT_MENU_OPEN, false, 1)]
 		public static void Open () {
-			GetWindow<AssetBundleGraph>();
+			var window = GetWindow<AssetBundleGraph>();
+			window.titleContent = new GUIContent("AssetBundle");
 		}
 
 		[MenuItem(AssetBundleGraphSettings.GUI_TEXT_MENU_BUILD, false, 1 + 11)]
@@ -133,14 +134,17 @@ namespace AssetBundleGraph {
 			AssetDatabase.Refresh();
 		}
 		
-		[MenuItem(AssetBundleGraphSettings.GUI_TEXT_MENU_DELETE_IMPORTSETTING_SAMPLE)]
-		public static void DeleteImportSettingSample () {
-			Debug.LogError("not yet.");
+		
+		[MenuItem(AssetBundleGraphSettings.GUI_TEXT_MENU_DELETE_IMPORTSETTING_SETTINGS)] public static void DeleteImportSettingSample () {
+			FileController.RemakeDirectory(AssetBundleGraphSettings.IMPORTER_SETTINGS_PLACE);
+
+			AssetDatabase.Refresh();
 		}
 		
-		[MenuItem(AssetBundleGraphSettings.GUI_TEXT_MENU_DELETE_MODIFIER_SAMPLE)]
-		public static void DeleteModifierSample () {
-			Debug.LogError("not yet.");
+		[MenuItem(AssetBundleGraphSettings.GUI_TEXT_MENU_DELETE_MODIFIER_SETTINGS)] public static void DeleteModifierSample () {
+			FileController.RemakeDirectory(AssetBundleGraphSettings.MODIFIER_SETTINGS_PLACE);
+
+			AssetDatabase.Refresh();
 		}
 
 
@@ -609,6 +613,8 @@ namespace AssetBundleGraph {
 			// ready throughput datas.
 			connectionThroughputs = GraphStackController.SetupStackedGraph(reloadedData);
 
+			RefreshInspector(connectionThroughputs);
+
 			Finally(nodes, connections, connectionThroughputs, false);
 		}
 
@@ -673,9 +679,24 @@ namespace AssetBundleGraph {
 			EditorUtility.ClearProgressBar();
 			AssetDatabase.Refresh();
 
+			RefreshInspector(connectionThroughputs);
+
 			Finally(currentNodes, currentConnections, connectionThroughputs, true);
 		}
 
+		private static void RefreshInspector (Dictionary<string,Dictionary<string, List<ThroughputAsset>>> currentConnectionThroughputs) {
+			switch (Selection.activeObject.GetType().ToString()) {
+				case "AssetBundleGraph.ConnectionInspector": {
+					var con = ((ConnectionInspector)Selection.activeObject).con;
+					((ConnectionInspector)Selection.activeObject).UpdateThroughputs(currentConnectionThroughputs[con.connectionId]);
+					break;
+				}
+				default: {
+					// do nothing.
+					break;
+				}
+			}
+		} 
 
 		public static void Finally (
 			List<Node> currentNodes,
@@ -1696,12 +1717,53 @@ namespace AssetBundleGraph {
 			Handles.DrawLine(new Vector3(p.x, p.y, 0f), new Vector3(to.x, to.y, 0f));
 		}
 
+		private static string Prettify (string sourceJson) {
+			var lines = sourceJson
+				.Replace("{", "{\n").Replace("}", "\n}")
+				.Replace("[", "[\n").Replace("]", "\n]")
+				.Replace(",", ",\n")
+				.Split('\n');
+
+			Func<string, int, string> indents = (string baseLine, int indentDepth) => {
+				var indentsStr = string.Empty;
+				for (var i = 0; i < indentDepth; i++) indentsStr += "\t";
+				return indentsStr + baseLine;
+			};
+
+			var indent = 0;
+			for (var i = 0; i < lines.Length; i++) {
+				var line = lines[i];
+
+				// reduce indent for "}"
+				if (line.Contains("}") || line.Contains("]")) {
+					indent--;
+				}
+
+				/*
+					adopt indent.
+				*/
+				lines[i] = indents(lines[i], indent);
+
+				// indent continued all line after "{" 
+				if (line.Contains("{") || line.Contains("[")) {
+					indent++;
+					continue;
+				}
+
+				
+			}
+			return string.Join("\n", lines);
+		}
+
 		private static void UpdateGraphData (Dictionary<string, object> data) {
 			var dataStr = Json.Serialize(data);
+
+			var prettified = Prettify(dataStr);
+			
 			var basePath = FileController.PathCombine(Application.dataPath, AssetBundleGraphSettings.ASSETNBUNDLEGRAPH_DATA_PATH);
 			var graphDataPath = FileController.PathCombine(basePath, AssetBundleGraphSettings.ASSETBUNDLEGRAPH_DATA_NAME);
 			using (var sw = new StreamWriter(graphDataPath)) {
-				sw.Write(dataStr);
+				sw.Write(prettified);
 			}
 		}
 
@@ -2083,7 +2145,6 @@ namespace AssetBundleGraph {
 				case AssetBundleGraphSettings.NodeKind.BUNDLEBUILDER_GUI: {
 					newNode.AddConnectionPoint(new InputPoint(AssetBundleGraphSettings.DEFAULT_INPUTPOINT_LABEL));
 					newNode.AddConnectionPoint(new OutputPoint(AssetBundleGraphSettings.BUNDLIZER_BUNDLE_OUTPUTPOINT_LABEL));
-					Debug.LogError("コピー時かあ、、うーーん、、全部表示しちゃったほうが楽な気がしてきたなあ、、");
 					break;
 				}
 
